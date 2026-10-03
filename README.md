@@ -29,3 +29,11 @@ Pruebas automatizadas de las reglas principales y compilación TypeScript. La in
 - `src/main.ts`: escena, personajes, IA, movimiento, audio, cámara, interfaz.
 - `src/style.css`: interfaz adaptable.
 - `tests/core.test.ts`: pruebas de reglas.
+
+## GitHub Pages
+
+URL de publicación: https://juliancardozo.github.io/galinhas-game/
+
+En el repositorio, activar **Settings → Pages → Build and deployment → Source: GitHub Actions**. El workflow `Publish game to GitHub Pages` prueba, compila y publica cada push a `main`. También se puede ejecutar desde **Actions → Publish game to GitHub Pages → Run workflow**.
+
+La ruta de los assets se configura con `base: '/galinhas-game/'` en `vite.config.ts`. Para otro repositorio o un dominio propio, ajustar esa ruta.
