@@ -22,3 +22,39 @@ test('Sprint drains while moving and recovery is bounded',()=>{
 test('Finish line wins, empty wallet loses, route remains playable before goal',()=>{
  assert.equal(outcome(80,-140,140),'won');assert.equal(outcome(0,-140,140),'lost');assert.equal(outcome(100,-139,140),null);
 });
+
+import {constrainCouple,slideMove,pairOutcome,sharedConversation,sameDirection} from '../src/couple.ts';
+import {dist,seedRandom} from '../src/core.ts';
+test('Separation never moves a stationary partner and always allows reunion',()=>{
+ const a={x:0,z:0},b={x:5,z:0};
+ assert.deepEqual(constrainCouple(a,b,{x:-.3,z:0},b),[a,b]);
+ assert.deepEqual(constrainCouple(a,b,{x:.3,z:0},b),[{x:.3,z:0},b]);
+ const [p,q]=constrainCouple(a,b,{x:.3,z:0},{x:5.4,z:0});assert.deepEqual(p,{x:.3,z:0});assert.ok(dist(p,q)<=5);
+ assert.deepEqual(constrainCouple(a,b,{x:0,z:-.3},{x:5,z:-.3}),[{x:0,z:-.3},{x:5,z:-.3}]);
+});
+test('Simultaneous movement remains within 5m, including tangents and reversals',()=>{
+ const rnd=seedRandom(734);
+ for(let i=0;i<10000;i++){
+  const angle=rnd()*Math.PI*2,r=4+rnd(),a={x:0,z:0},b={x:Math.cos(angle)*r,z:Math.sin(angle)*r};
+  const na={x:(rnd()-.5)*.72,z:(rnd()-.5)*.72},nb={x:b.x+(rnd()-.5)*.72,z:b.z+(rnd()-.5)*.72};
+  const [pa,pb]=constrainCouple(a,b,na,nb);assert.ok(dist(pa,pb)<=5+1e-8);
+  for(const [old,next,res] of [[a,na,pa],[b,nb,pb]]){assert.ok(dist(old,res)<=dist(old,next)+1e-8);}
+ }
+});
+test('Obstacles allow backing out and reuniting; movement cannot tunnel through cover',()=>{
+ const obstacles=[{x:0,z:0,radius:1}],a={x:-1.5,z:0},b={x:1.5,z:0};
+ assert.deepEqual(slideMove(a,{x:.3,z:0},obstacles),a);
+ assert.deepEqual(slideMove(a,{x:0,z:.3},obstacles),{x:-1.5,z:.3});
+ const path=[{x:0,z:.3},{x:0,z:1.3},{x:1,z:0},{x:1,z:0},{x:0,z:-.3}];let p=a;
+ for(const d of path){const next=slideMove(p,d,obstacles);[p]=constrainCouple(p,b,next,b);assert.ok(dist(p,b)<=5);assert.ok(dist(p,obstacles[0])>=1.42);}
+ assert.ok(dist(p,b)<dist(a,b));
+ assert.deepEqual(slideMove({x:-2,z:0},{x:4,z:0},obstacles),{x:-2,z:0});
+});
+test('Shared conversation caps drain and retains independent progress and energy',()=>{
+ assert.deepEqual(sharedConversation([1,1],[true,true],[false,false],1),{progress:[1,1],drain:20});
+ const r=sharedConversation([.5,1],[false,true],[false,true],.1);assert.ok(r.progress[0]<.5);assert.equal(r.progress[1],1);assert.ok(Math.abs(r.drain-1.6)<1e-8);
+ assert.equal(pairOutcome(100,[{x:0,z:-140},{x:1,z:-139}],140),null);
+ assert.equal(pairOutcome(100,[{x:0,z:-140},{x:1,z:-140}],140),'won');
+ assert.equal(pairOutcome(0,[{x:0,z:-140},{x:1,z:-140}],140),'lost');
+ assert.equal(sameDirection({x:1,z:-1},{x:1,z:-1}),true);assert.equal(sameDirection({x:1,z:-1},{x:-1,z:-1}),false);
+});
