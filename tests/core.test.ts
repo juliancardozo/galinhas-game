@@ -75,3 +75,32 @@ test('Calm preserves original rules; exciting raises pressure without unavoidabl
  assert.equal(difficultyConversation([1,1],[true,true],[false,false],1,'exciting').drain,22);
  assert.equal(difficultyEnergy(50,false,true,1,'calm'),70);assert.equal(difficultyEnergy(50,false,true,1,'exciting'),68);
 });
+
+import {DoubleTap,defenceTarget,defenceEffect,DEFENCE,proximityVolume,voiceInterval} from '../src/verbal.ts';
+test('Double tap requires release, ignores repeats, expires and resets across pause',()=>{
+ const taps=new DoubleTap();assert.equal(taps.press('KeyW',false,0),false);assert.equal(taps.press('KeyW',true,100),false);assert.equal(taps.press('KeyW',false,150),false);taps.release('KeyW');assert.equal(taps.press('KeyW',false,300),true);
+ taps.clear();assert.equal(taps.press('ArrowUp',false,1000),false);taps.release('ArrowUp');assert.equal(taps.press('ArrowUp',false,1400),false);taps.release('ArrowUp');assert.equal(taps.press('ArrowUp',false,1700),true);
+ taps.clear();taps.press('KeyW',false,2000);taps.release('KeyW');taps.clear();assert.equal(taps.press('KeyW',false,2200),false);
+});
+test('Defence prioritizes a nearby partner; shared resistance blocks alternating farming',()=>{
+ const people=[{x:0,z:0},{x:1,z:0}],threats=[{position:{x:0,z:1},state:'CHASE' as const,targetPlayer:0,resistUntil:0},{position:{x:1,z:2},state:'TALK' as const,targetPlayer:1,resistUntil:0}];
+ assert.deepEqual(defenceTarget(0,people,threats,0),{index:1,defended:1});threats[1].resistUntil=10;assert.equal(defenceTarget(1,people,threats,1),null);assert.deepEqual(defenceTarget(0,people,threats,1),{index:0,defended:0});
+ threats[0].resistUntil=10;assert.equal(defenceTarget(0,people,threats,2),null);assert.equal(defenceTarget(0,[people[0],{x:6,z:0}],threats,11)?.defended,0);
+ assert.ok(defenceEffect(1,'exciting')>defenceEffect(1,'calm'));assert.ok(defenceEffect(1,'calm')>0);assert.ok(DEFENCE.calm.resistance>DEFENCE.calm.cooldown);
+});
+test('Proximity volume is bounded, continuous and increases as vendor approaches',()=>{
+ assert.equal(proximityVolume(14),0);assert.equal(proximityVolume(20),0);assert.equal(proximityVolume(2),1);assert.equal(proximityVolume(0),1);
+ assert.ok(proximityVolume(5)>proximityVolume(10));let previous=1;for(let d=0;d<=15;d+=.01){const volume=proximityVolume(d);assert.ok(volume>=0&&volume<=1);assert.ok(volume<=previous+1e-8);assert.ok(Math.abs(volume-previous)<.01);previous=volume;}
+ assert.ok(voiceInterval('TALK','exciting',.5)<voiceInterval('PATROL','exciting',.5));assert.ok(voiceInterval('CHASE','calm',.5)>voiceInterval('CHASE','exciting',.5));
+});
+import {BeachVoices} from '../src/voices.ts';
+test('Audio updates an ongoing clip, caps concurrency and clears playback on pause/mute/failure',async()=>{
+ const params:any[]=[];const param=()=>{const p={value:0,last:0,setTargetAtTime(v:number){this.last=v;}};params.push(p);return p;};
+ const sources:any[]=[];const node=()=>({connect(){return this;},disconnect(){}});
+ const ctx:any={state:'running',currentTime:1,destination:{},decodeAudioData:async()=>({}),createGain:()=>({...node(),gain:param()}),createStereoPanner:()=>({...node(),pan:param()}),createBufferSource:()=>{const source={...node(),playbackRate:{value:1},onended:null,stopped:false,start(){},stop(){this.stopped=true;}};sources.push(source);return source;}};
+ const voices=new BeachVoices();voices.attach(ctx);await new Promise(resolve=>setTimeout(resolve,0));voices.configure(true,.6,true);
+ const at=(id:number,distance:number,state:any='PATROL')=>({id,distance,pan:.4,state});assert.equal(voices.play(0,at(0,10)),true);const gain=params[0];assert.ok(gain.value<.2);voices.update([at(0,2)]);assert.equal(gain.last,.6);
+ assert.equal(voices.play(1,at(1,5)),true);assert.equal(voices.play(2,at(2,5)),false);assert.equal(voices.play(2,at(2,4,'TALK')),true);assert.equal(voices.count,2);assert.equal(sources[0].stopped,true);
+ voices.configure(true,.6,false);assert.equal(voices.count,0);assert.equal(voices.play(0,at(0,2)),false);voices.configure(true,.6,true);voices.play(0,at(0,2));voices.configure(false,.6,true);assert.equal(voices.count,0);
+ const broken=new BeachVoices();broken.attach({...ctx,decodeAudioData:async()=>{throw Error('unsupported');}});await new Promise(resolve=>setTimeout(resolve,0));assert.equal(broken.failed,true);assert.equal(broken.count,0);
+});

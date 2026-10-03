@@ -11,3 +11,13 @@ export function difficultyConversation(progress:number[],talking:boolean[],sprin
  return {progress:next,drain:Math.min(drain,(progress.length===2?rules.cap:rules.charge)*dt)};
 }
 export function difficultyEnergy(energy:number,sprint:boolean,moving:boolean,dt:number,difficulty:Difficulty){const p=DIFFICULTIES[difficulty];return Math.max(0,Math.min(100,energy+(sprint&&moving?-p.energyDrain:p.recovery)*dt));}
+
+## Voces y defensa verbal
+
+Activar **SONIDO ON**. Las cinco frases de vendedores, “Mas tem WiFi!” y “Ya tenemos sombrilla, gracias.” se incluyen como clips MP3 sintetizados previamente con eSpeak NG 1.51 (pt-br y es). Es una voz sintética provisional, no una grabación de actor. Web Audio decodifica los clips al primer gesto; GainNode actualiza el volumen durante cada frase y StereoPannerNode sigue la posición respecto de la cámara. Sin StereoPannerNode se reproduce en mono; si falta Web Audio o falla la decodificación, quedan los globos y el juego sigue. No hay solicitudes a un servicio de voz durante la partida.
+
+Volumen: máximo configurado hasta 2 m, 68% a 5 m, 18% a 10 m y silencio a 14 m. Curvas suaves y paneo limitado a ±0,65. Máximo dos voces, prioridad de conversación/persecución y ninguna cola. **AJUSTES** permite regular voces y ambiente por separado; pausa, desenfoque, capítulos, resultados y reinicios cortan las voces.
+
+Respuesta: **1: W,W o Q; 2: ↑,↑ o punto**. Dos pulsaciones con liberación en 350 ms; mantener la tecla no dispara respuestas. Alternativas configurables sin conflictos con sprint. En individual también hay un botón táctil. A menos de 4 m se prioriza al vendedor que conversa con el compañero, siempre que la pareja esté a menos de 2,5 m. La respuesta reduce tensión y provoca una breve duda, conservando la conversación y la vulnerabilidad frente a otros vendedores. Cooldown 8 s; resistencia del vendedor compartida 10/11 s; sin puntos por hablar. Sin emoción: duda 1,15 s, reducción 0,30. Con emoción: duda 0,8 s, reducción 0,20.
+
+Validación: pruebas de doble toque, resistencia compartida, límite de dos voces, volumen continuo y limpieza en pausa/fallo, más integración del módulo real con DOM/WebGL simulado. Los siete clips se decodificaron con ffmpeg y duran entre 0,86 y 2,12 s. Falta escucha y prueba visual en los navegadores de los jugadores para ajustar naturalidad, mezcla y ritmo.
