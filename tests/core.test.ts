@@ -67,3 +67,11 @@ test('Story carries wallet, score and time; each intermediate reward is earned o
  journey=completeStage({...journey,money:90,score:2500,seconds:100},1);assert.equal(journey.money,120);
  journey=completeStage({...journey,money:105,score:4800,seconds:180},2);assert.deepEqual(journey,{money:105,score:4800,seconds:180,completed:3});
 });
+
+import {DIFFICULTIES,difficultyLevel,difficultyConversation,difficultyEnergy} from '../src/difficulty.ts';
+test('Calm preserves original rules; exciting raises pressure without unavoidable sprint catches',()=>{
+ for(let i=0;i<3;i++){const a=difficultyLevel(i,'calm'),b=difficultyLevel(i,'exciting');assert.ok(b.npcs>a.npcs);assert.ok(b.radius>a.radius);assert.ok(b.speed>a.speed&&b.speed<7.2*DIFFICULTIES.exciting.penalty);}
+ assert.deepEqual(difficultyConversation([1,1],[true,true],[false,false],1,'calm'),{progress:[1,1],drain:20});
+ assert.equal(difficultyConversation([1,1],[true,true],[false,false],1,'exciting').drain,22);
+ assert.equal(difficultyEnergy(50,false,true,1,'calm'),70);assert.equal(difficultyEnergy(50,false,true,1,'exciting'),68);
+});

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import './style.css';
+import {DIFFICULTIES,difficultyLevel,difficultyConversation,difficultyEnergy,type Difficulty} from './difficulty';
 import {STORY,completeStage} from './story';
 import {constrainCouple, slideMove, pairOutcome, sharedConversation, sameDirection, MAX_DISTANCE, WARNING_DISTANCE} from './couple';
 import {arcade} from './arcade';
@@ -11,6 +12,9 @@ let gameMode:'solo'|'coop'|'story'='solo';
 const coop=()=>gameMode!=='solo';
 const story=()=>gameMode==='story';
 let journey={money:100,score:0,seconds:0,completed:0},stageStartedAt=0;
+let difficulty:Difficulty='calm';
+const rules=()=>DIFFICULTIES[difficulty];
+const beach=()=>difficultyLevel(selected,difficulty);
 let sprintCodes=['ShiftLeft','ShiftRight'];
 type Agent={person:Person,energy:number,talk:number,locked:boolean,velocity:Point,sprint:boolean,side:number,turnAt:number,reversedAt:number};
 let agents:Agent[]=[];let link:THREE.Line;
@@ -81,14 +85,14 @@ function setupLevel(level:number){
  link=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineBasicMaterial({color:0xffce55,transparent:true,opacity:.65}));world.add(link);link.visible=false;
  if(coop()){camera.position.set(0,15,22);camera.lookAt(0,0,-10);}
 
- for(let i=0;i<LEVELS[level].npcs;i++){const z=-18-i*(L-38)/LEVELS[level].npcs;const x=(i%2===0?-1:1)*(3+rnd()*9);const p=person(x,z,true);const heading=i%2===0?Math.PI/2:-Math.PI/2;p.group.rotation.y=heading;const cone=new THREE.Mesh(coneGeometry(LEVELS[level].radius),new THREE.MeshBasicMaterial({color:0xffce61,transparent:true,opacity:.14,depthWrite:false,side:THREE.DoubleSide}));cone.position.set(x,0,z);cone.rotation.y=heading;world.add(cone);const bubble=document.createElement('div');bubble.className='bubble';bubble.style.display='none';$('bubbles').appendChild(bubble);npcs.push({person:p,state:'PATROL',home:{x,z},target:{x:x+(i%2===0?6:-6),z:z-2},heading,timer:rnd()*2,seen:0,lastSeen:{x,z},cone,bubble,phraseAt:0,phrase:'',dodged:false,near:false,blind:0,targetPlayer:0,lockedUntil:0,encounter:false});}
+ for(let i=0;i<difficultyLevel(level,difficulty).npcs;i++){const z=-18-i*(L-38)/difficultyLevel(level,difficulty).npcs;const x=(i%2===0?-1:1)*(3+rnd()*9);const p=person(x,z,true);const heading=i%2===0?Math.PI/2:-Math.PI/2;p.group.rotation.y=heading;const cone=new THREE.Mesh(coneGeometry(difficultyLevel(level,difficulty).radius),new THREE.MeshBasicMaterial({color:0xffce61,transparent:true,opacity:.14,depthWrite:false,side:THREE.DoubleSide}));cone.position.set(x,0,z);cone.rotation.y=heading;world.add(cone);const bubble=document.createElement('div');bubble.className='bubble';bubble.style.display='none';$('bubbles').appendChild(bubble);npcs.push({person:p,state:'PATROL',home:{x,z},target:{x:x+(i%2===0?6:-6),z:z-2},heading,timer:rnd()*2,seen:0,lastSeen:{x,z},cone,bubble,phraseAt:0,phrase:'',dodged:false,near:false,blind:0,targetPlayer:0,lockedUntil:0,encounter:false});}
  if(level<2){box(world,0x35c5c6,0,-.04,-L-30,50,.14,58);box(world,0xb8efda,0,.045,-L-1.5,49,.03,1.6);if(level===1){for(let i=0;i<14;i++){const reef=ball(world,0x738576,(rnd()-.5)*44,.1,-L-5-rnd()*28,1+rnd());reef.scale.y=.3;}}}else{for(let i=0;i<3;i++)boat(8+i*5,-L-6-i*3);}
  goal=new THREE.Group();goal.position.set(0,0,-L);world.add(goal);const goalMat=new THREE.MeshBasicMaterial({color:0xffce55,transparent:true,opacity:.5});const g=new THREE.Mesh(new THREE.PlaneGeometry(42,2),goalMat);g.rotation.x=-Math.PI/2;g.position.y=.09;goal.add(g);
  for(const s of [-1,1]){cylinder(goal,0xf8f1dc,s*6,2.2,0,.1,4.4);const flag=mesh(new THREE.PlaneGeometry(2,1.2),0xffca55,goal,s*6+(s===-1?1:-1),3.6,0);flag.material=new THREE.MeshStandardMaterial({color:0xffce55,side:THREE.DoubleSide});}
  const sign=new THREE.Mesh(new THREE.PlaneGeometry(6,1.4),new THREE.MeshBasicMaterial({map:labelTexture(level===0?'AO MAR!':level===1?'PISCINAS':'EMBARQUE','#085258','#ffdb65',512,128),side:THREE.DoubleSide}));sign.position.set(0,4.5,0);goal.add(sign);
  if(!coop()||mode==='menu'){camera.position.set(24,26,29);camera.lookAt(-2,0,-30);}
  money=100;energy=100;score=0;elapsed=0;talk=0;combo=0;comboTime=-100;feintCooldown=0;sprintLocked=false;velocity={x:0,z:0};keys.clear();
- $('levelname').textContent=`${story()?'HISTORIA · ':''}0${level+1} / ${LEVELS[level].name}`;$('destination').textContent=LEVELS[level].destination;updateHUD();
+ $('difficulty-badge').textContent=rules().label;$('levelname').textContent=`${story()?'HISTORIA · ':''}0${level+1} / ${LEVELS[level].name}`;$('destination').textContent=LEVELS[level].destination;updateHUD();
 }
 function sound(freq=440,duration=.12,type:OscillatorType='sine',volume=.04){if(!soundOn||!audio)return;const o=audio.createOscillator(),gain=audio.createGain();o.type=type;o.frequency.setValueAtTime(freq,audio.currentTime);o.frequency.exponentialRampToValueAtTime(freq*.65,audio.currentTime+duration);gain.gain.setValueAtTime(volume,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);o.connect(gain).connect(audio.destination);o.start();o.stop(audio.currentTime+duration);}
 function initAudio(){if(!audio){audio=new AudioContext();const buffer=audio.createBuffer(1,audio.sampleRate*4,audio.sampleRate);const data=buffer.getChannelData(0);let v=0;for(let i=0;i<data.length;i++){v=(v+(Math.random()*2-1)*.04)/1.02;data[i]=v*3;}const source=audio.createBufferSource();source.buffer=buffer;source.loop=true;const filter=audio.createBiquadFilter();filter.type='lowpass';filter.frequency.value=480;waveGain=audio.createGain();waveGain.gain.value=0;source.connect(filter).connect(waveGain).connect(audio.destination);source.start();}void audio.resume();if(waveGain)waveGain.gain.value=soundOn?.17:0;}
@@ -101,7 +105,7 @@ function start(continuing=false){
  setupLevel(selected);
  if(story()&&continuing){money=journey.money;score=journey.score;elapsed=journey.seconds;}
  stageStartedAt=elapsed;
- if(!continuing)arcade.begin(selected+1,gameMode);
+ if(!continuing)arcade.begin(selected+1,gameMode,difficulty);
 mode='play';if(coop()){camera.position.set(0,15,21);camera.lookAt(0,0,-8);}initAudio();toggle('menu',false);toggle('result',false);toggle('start-tip',false);toggle('hud',true);toggle('bottomhud',true);toggle('touch',!coop());toggle('guide',false);$('shade').style.background='linear-gradient(180deg,#03454b33,transparent 30%,transparent 70%,#03454b55)';$('pause').style.display='block';toast(coop()?'AL MAR. JUNTOS.':'AL MAR. SIN ESCALAS.');(document.activeElement as HTMLElement)?.blur();$('hint').textContent='Las sombrillas y carritos cortan la visión.';sound(600,.14);clock.getDelta();updateLevelButtons();if(story()){mode='pause';keys.clear();$('chapter-title').textContent=STORY[selected].title;$('chapter-copy').textContent=STORY[selected].intro;toggle('chapter',true);}}
 function finish(won:boolean){mode=won?'won':'lost';keys.clear();if(won){score+=Math.round(money)*12+Math.max(0,Math.round((180-(elapsed-stageStartedAt))*8));sound(880,.4,'triangle');}else sound(160,.5,'sawtooth');toggle('result',true);toggle('bottomhud',false);toggle('touch',false);toggle('start-tip',false);toggle('conversation',false);$('pause').style.display='none';$('shade').style.background='linear-gradient(90deg,#033d42ed,#033d4266 55%,transparent)';$('resulttag').textContent=won?'MISIÓN COMPLETA':'TE VENDIERON HASTA EL WIFI';$('resulttitle').textContent=won?(coop()?'CHEGAMOS!':'CHEGOU!'):'SIN REAIS.';$('resultcopy').textContent=won?(coop()?'JUNTOS Y CON REAIS.':'Ahora sí, vacaciones. Te ganaste ese chapuzón.'):(coop()?'Les vendieron hasta el WiFi.':'Gastaste todos los reais antes de llegar al destino.');$('resultmoney').textContent=`R$${Math.ceil(money)}`;$('resultscore').textContent=String(score);$('resulttime').textContent=formatTime(elapsed);const intermediate=story()&&won&&selected<2;
  toggle('next',won&&selected<2);$('next').textContent=story()?'CONTINUAR EL VIAJE':'SIGUIENTE PLAYA';
@@ -134,19 +138,19 @@ function moveNPC(n:NPC,target:Point,speed:number,dt:number){const p=n.person.gro
 function updateNPC(n:NPC,dt:number){const p=n.person.group.position;
  if(elapsed>=n.lockedUntil&&(n.state==='PATROL'||n.state==='IDLE'||n.state==='RETURN')){
   let choice=-1,best=Infinity;
-  agents.forEach((a,i)=>{const d=dist(p,a.person.group.position);if(d<best&&canSee(p,n.heading,a.person.group.position,LEVELS[selected].radius,covers)){choice=i;best=d;}});
+  agents.forEach((a,i)=>{const d=dist(p,a.person.group.position);if(d<best&&canSee(p,n.heading,a.person.group.position,beach().radius,covers)){choice=i;best=d;}});
   if(choice>=0){n.targetPlayer=choice;n.lockedUntil=elapsed+2.5;}
  }
- const targetAgent=agents[n.targetPlayer]??agents[0],pp=targetAgent.person.group.position,d=dist(p,pp);n.timer+=dt;n.blind=Math.max(0,n.blind-dt);const visible=n.blind===0&&canSee(p,n.heading,pp,LEVELS[selected].radius,covers);
+ const targetAgent=agents[n.targetPlayer]??agents[0],pp=targetAgent.person.group.position,d=dist(p,pp);n.timer+=dt;n.blind=Math.max(0,n.blind-dt);const visible=n.blind===0&&canSee(p,n.heading,pp,beach().radius,covers);
  if(d<3.9)n.near=true;
  if(n.near&&!n.dodged&&d>7&&n.state!=='TALK'&&(!coop()||(n.encounter&&agents.every(a=>dist(p,a.person.group.position)>7)&&!npcs.some(other=>other.state==='TALK')&&dist(agents[0].person.group.position,agents[1].person.group.position)<=MAX_DISTANCE))){n.dodged=true;combo=elapsed-comboTime<5?combo+1:1;comboTime=elapsed;const bonus=(coop()?200:100)*Math.min(combo,5);score+=bonus;toast(coop()?`ESQUIVE EN PAREJA +${bonus}${combo>1?' / COMBO ×'+combo:''}`:combo>1?`ESQUIVE +${bonus} / COMBO ×${combo}`:'ESQUIVE +100');sound(780+combo*70,.15,'triangle');}
  let moving=false;
  switch(n.state){
  case 'IDLE': n.heading+=dt*.3;if(visible){n.state='SUSPICIOUS';n.timer=0;}else if(n.timer>1.6){n.state='PATROL';n.timer=0;}break;
  case 'PATROL':moving=moveNPC(n,n.target,.85,dt);if(dist(p,n.target)<.9||n.timer>9){n.state='IDLE';n.timer=0;n.target={x:n.home.x+(rnd()-.5)*10,z:n.home.z+(rnd()-.5)*7};}if(visible){n.state='SUSPICIOUS';n.timer=0;n.seen=0;sound(490,.08);}break;
- case 'SUSPICIOUS':n.heading=Math.atan2(pp.x-p.x,pp.z-p.z);if(visible)n.seen+=dt;else n.seen-=dt*2;if(n.seen>.42){n.state='CHASE';n.encounter=true;n.timer=0;n.lastSeen={x:pp.x,z:pp.z};}else if(n.seen<-.3){n.state='RETURN';n.timer=0;}break;
- case 'CHASE':if(visible){n.lastSeen={x:pp.x+targetAgent.velocity.x*.65,z:pp.z+targetAgent.velocity.z*.65};n.timer=0;}moving=moveNPC(n,n.lastSeen,LEVELS[selected].speed,dt);if(d<2.25&&!blocksSight(p,pp,covers)){n.state='TALK';n.timer=0;n.phraseAt=-10;}else if(n.timer>1.7||n.blind>0){n.state='RETURN';n.timer=0;}break;
- case 'TALK':moving=moveNPC(n,pp,LEVELS[selected].speed*.75,dt);if(d>3.15||blocksSight(p,pp,covers)){n.state='CHASE';n.timer=0;}if(elapsed-n.phraseAt>2){n.phrase=sayings[Math.floor(n.timer/2)%sayings.length];n.phraseAt=elapsed;sound(290,.08,'triangle');}break;
+ case 'SUSPICIOUS':n.heading=Math.atan2(pp.x-p.x,pp.z-p.z);if(visible)n.seen+=dt;else n.seen-=dt*2;if(n.seen>rules().suspicion){n.state='CHASE';n.encounter=true;n.timer=0;n.lastSeen={x:pp.x,z:pp.z};}else if(n.seen<-.3){n.state='RETURN';n.timer=0;}break;
+ case 'CHASE':if(visible){n.lastSeen={x:pp.x+targetAgent.velocity.x*.65,z:pp.z+targetAgent.velocity.z*.65};n.timer=0;}moving=moveNPC(n,n.lastSeen,beach().speed,dt);if(d<2.25&&!blocksSight(p,pp,covers)){n.state='TALK';n.timer=0;n.phraseAt=-10;}else if(n.timer>rules().memory||n.blind>0){n.state='RETURN';n.timer=0;}break;
+ case 'TALK':moving=moveNPC(n,pp,beach().speed*rules().talkSpeed,dt);if(d>3.15||blocksSight(p,pp,covers)){n.state='CHASE';n.timer=0;}if(elapsed-n.phraseAt>2){n.phrase=sayings[Math.floor(n.timer/2)%sayings.length];n.phraseAt=elapsed;sound(290,.08,'triangle');}break;
  case 'RETURN':moving=moveNPC(n,n.home,1.15,dt);if(n.timer>1.7&&visible){n.state='SUSPICIOUS';n.timer=0;n.seen=0;}else if(dist(p,n.home)<1){n.state='PATROL';n.timer=0;}break;
  }
  n.person.group.rotation.y=n.heading;animatePerson(n.person,moving,elapsed);n.cone.position.set(p.x,.01,p.z);n.cone.rotation.y=n.heading;const material=n.cone.material as THREE.MeshBasicMaterial;material.color.set(n.state==='CHASE'||n.state==='TALK'?0xf5784f:0xffd264);material.opacity=n.state==='RETURN'?.06:n.state==='CHASE'?.19:.12;
@@ -169,9 +173,9 @@ function tick(dt:number){
   if(x!==0&&x!==a.side){if(a.side!==0&&elapsed-a.turnAt<.7)a.reversedAt=elapsed;a.side=x;a.turnAt=elapsed;}
   if(a.energy<1)a.locked=true;if(a.energy>30)a.locked=false;
   a.sprint=moving&&!a.locked&&a.energy>0&&(keys.has(sprintCodes[i])||(!coop()&&keys.has('ShiftRight'))||keys.has('TouchSprint'));
-  a.energy=energyStep(a.energy,a.sprint,moving,dt);
+  a.energy=difficultyEnergy(a.energy,a.sprint,moving,dt,difficulty);
   const norm=Math.hypot(x,z)||1;let speed=a.sprint?7.2:3.65;
-  if(activeTalk[i])speed*=help?.86:.72;
+  if(activeTalk[i])speed*=help?rules().help:rules().penalty;
   a.velocity={x:x/norm*speed,z:z/norm*speed};return slideMove(old[i],{x:a.velocity.x*dt,z:a.velocity.z*dt},solids);
  });
  if(coop())proposed=constrainCouple(old[0],old[1],proposed[0],proposed[1]);
@@ -187,7 +191,7 @@ function tick(dt:number){
   if(tricked){if(!coop())score+=75;toast(coop()?'¡POR EL OTRO LADO!':'¡LOS ENGAÑASTE! +75');sound(950,.12);feintCooldown=1.4;agents.forEach(a=>a.reversedAt=-10);}}
  for(const n of npcs)updateNPC(n,dt);
  const talkingNow=agents.map((a,i)=>npcs.some(n=>n.state==='TALK'&&n.targetPlayer===i&&dist(n.person.group.position,a.person.group.position)<3.15));
- const conversation=sharedConversation(agents.map(a=>a.talk),talkingNow,agents.map(a=>a.sprint),dt);agents.forEach((a,i)=>a.talk=conversation.progress[i]);money=Math.max(0,money-conversation.drain);
+ const conversation=difficultyConversation(agents.map(a=>a.talk),talkingNow,agents.map(a=>a.sprint),dt,difficulty);agents.forEach((a,i)=>a.talk=conversation.progress[i]);money=Math.max(0,money-conversation.drain);
  for(const w of walkers){if(w.dir){w.person.group.position.x=w.home.x+Math.sin(elapsed*.25+w.home.z)*2;w.person.group.rotation.y=Math.cos(elapsed*.25+w.home.z)>0?Math.PI/2:-Math.PI/2;}animatePerson(w.person,w.dir!==0,elapsed);}
  const mid=agents.reduce((p,a)=>({x:p.x+a.person.group.position.x/agents.length,z:p.z+a.person.group.position.z/agents.length}),{x:0,z:0});
  const separation=coop()?dist(agents[0].person.group.position,agents[1].person.group.position):0;
@@ -223,8 +227,9 @@ window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener(
 const touchCodes:Record<string,string>={arrowup:'ArrowUp',arrowdown:'ArrowDown',arrowleft:'ArrowLeft',arrowright:'ArrowRight',shift:'TouchSprint'};
 document.querySelectorAll<HTMLButtonElement>('[data-key]').forEach(b=>{b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);if(mode==='play'&&!coop())keys.add(touchCodes[b.dataset.key!]);});for(const event of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(event,()=>keys.delete(touchCodes[b.dataset.key!]));});
 document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach(b=>b.onclick=()=>{
- gameMode=b.dataset.mode as 'solo'|'coop'|'story';document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach(v=>v.classList.toggle('selected',v===b));toggle('coop-controls',coop());toggle('story-description',story());toggle('pair-identity',coop());if(story())selected=0;updateLevelButtons();$('play').textContent=story()?'EMPEZAR NUESTRA HISTORIA':coop()?'¡AL AGUA, LOS DOS!':'¡AL AGUA!';$('menu-note').textContent=story()?'Tres etapas seguidas. +R$30 en las dos primeras. Billetera, puntos y tiempo acumulados.':coop()?'Hasta 5 m juntos. R$100 compartidos. Lleguen los dos.':'Llegá al destino. Esquivá las charlas. Conservá tus reais.';$('guide-controls').textContent=coop()?'1: WASD + Shift izq. · 2: Flechas + Shift der.':'WASD o flechas · Shift: sprint';setupLevel(selected);
+ gameMode=b.dataset.mode as 'solo'|'coop'|'story';document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach(v=>v.classList.toggle('selected',v===b));toggle('coop-controls',coop());toggle('story-description',story());toggle('menu-note',!story());toggle('pair-identity',coop());if(story())selected=0;updateLevelButtons();$('play').textContent=story()?'EMPEZAR NUESTRA HISTORIA':coop()?'¡AL AGUA, LOS DOS!':'¡AL AGUA!';$('menu-note').textContent=story()?'Tres etapas seguidas. +R$30 en las dos primeras. Billetera, puntos y tiempo acumulados.':coop()?'Hasta 5 m juntos. R$100 compartidos. Lleguen los dos.':'Llegá al destino. Esquivá las charlas. Conservá tus reais.';$('guide-controls').textContent=coop()?'1: WASD + Shift izq. · 2: Flechas + Shift der.':'WASD o flechas · Shift: sprint';setupLevel(selected);
 });
+$<HTMLSelectElement>('difficulty').onchange=()=>{difficulty=$<HTMLSelectElement>('difficulty').value as Difficulty;$('difficulty-note').textContent=difficulty==='exciting'?'Más vendedores, persecuciones más largas y menos margen para conversar. Coordinen el sprint.':'El ritmo original: para conocer las playas y practicar juntos.';setupLevel(selected);};
 ['sprint1','sprint2'].forEach((id,i)=>$(id).onchange=()=>{sprintCodes[i]=$<HTMLSelectElement>(id).value;});
 if(matchMedia('(pointer:coarse)').matches&&!matchMedia('(any-pointer:fine)').matches){$<HTMLButtonElement>('choose-coop').disabled=true;$<HTMLButtonElement>('choose-story').disabled=true;$('desktop-note').textContent='Pareja: requiere computadora y teclado compartido.';}
 window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
@@ -232,4 +237,4 @@ renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();i
 setupLevel(0);toggle('loading',false);frame();
 // Shared actions for browsers with WebMCP support.
 const context=(document as Document & {modelContext?:{registerTool:(tool:unknown,options?:unknown)=>void|Promise<void>}}).modelContext;
-if(context){const lifecycle=new AbortController();const snapshot=()=>({level:selected+1,state:mode,completedStages:journey.completed,money:Math.ceil(money),score,elapsed:Math.round(elapsed),gameMode,players:agents.map((a,i)=>({number:i+1,x:a.person.group.position.x,z:a.person.group.position.z,energy:a.energy,conversation:a.talk})),progress:Math.max(0,Math.round(-Math.max(...agents.map(a=>a.person.group.position.z))/LEVELS[selected].length*100))});for(const tool of [{name:'read_game_state',description:'Read the current level, game state, reais, score and route progress.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>snapshot()},{name:'start_beach_level',description:'Start or restart the specified beach level, resetting money and score.',inputSchema:{type:'object',properties:{level:{type:'integer',minimum:1,maximum:3}},required:['level'],additionalProperties:false},annotations:{readOnlyHint:false},execute:(input:unknown)=>{const l=(input as {level:number}).level;if(!Number.isInteger(l)||l<1||l>3)throw new Error('Level must be 1, 2, or 3.');selected=l-1;toggle('paused',false);updateLevelButtons();start();return snapshot();}}])try{void Promise.resolve(context.registerTool(tool,{signal:lifecycle.signal})).catch(()=>{});}catch{}window.addEventListener('pagehide',()=>lifecycle.abort(),{once:true});}
+if(context){const lifecycle=new AbortController();const snapshot=()=>({level:selected+1,state:mode,completedStages:journey.completed,difficulty,balanceVersion:rules().version,money:Math.ceil(money),score,elapsed:Math.round(elapsed),gameMode,players:agents.map((a,i)=>({number:i+1,x:a.person.group.position.x,z:a.person.group.position.z,energy:a.energy,conversation:a.talk})),progress:Math.max(0,Math.round(-Math.max(...agents.map(a=>a.person.group.position.z))/LEVELS[selected].length*100))});for(const tool of [{name:'read_game_state',description:'Read the current level, game state, reais, score and route progress.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>snapshot()},{name:'start_beach_level',description:'Start or restart the specified beach level, resetting money and score.',inputSchema:{type:'object',properties:{level:{type:'integer',minimum:1,maximum:3}},required:['level'],additionalProperties:false},annotations:{readOnlyHint:false},execute:(input:unknown)=>{const l=(input as {level:number}).level;if(!Number.isInteger(l)||l<1||l>3)throw new Error('Level must be 1, 2, or 3.');selected=l-1;toggle('paused',false);updateLevelButtons();start();return snapshot();}}])try{void Promise.resolve(context.registerTool(tool,{signal:lifecycle.signal})).catch(()=>{});}catch{}window.addEventListener('pagehide',()=>lifecycle.abort(),{once:true});}
