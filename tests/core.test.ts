@@ -58,3 +58,12 @@ test('Shared conversation caps drain and retains independent progress and energy
  assert.equal(pairOutcome(0,[{x:0,z:-140},{x:1,z:-140}],140),'lost');
  assert.equal(sameDirection({x:1,z:-1},{x:1,z:-1}),true);assert.equal(sameDirection({x:1,z:-1},{x:-1,z:-1}),false);
 });
+
+import {completeStage} from '../src/story.ts';
+test('Story carries wallet, score and time; each intermediate reward is earned once',()=>{
+ let journey={money:80,score:1200,seconds:45,completed:0};
+ journey=completeStage(journey,0);assert.deepEqual(journey,{money:110,score:1200,seconds:45,completed:1});
+ assert.throws(()=>completeStage(journey,0));assert.throws(()=>completeStage(journey,2));
+ journey=completeStage({...journey,money:90,score:2500,seconds:100},1);assert.equal(journey.money,120);
+ journey=completeStage({...journey,money:105,score:4800,seconds:180},2);assert.deepEqual(journey,{money:105,score:4800,seconds:180,completed:3});
+});

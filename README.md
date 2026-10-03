@@ -58,3 +58,9 @@ Dashboard privado: https://galinhas-arcade-service.juli-ai.chatgpt.site/admin
 El dashboard exige Sign in with ChatGPT y una cuenta autorizada en `ADMIN_EMAIL`. Separa individual y cooperativo, con iniciadas, finalizadas, victorias, derrotas, promedios, actividad diaria, país aproximado, dispositivo y sitio de origen. No guarda IPs en los registros. Las partidas anteriores a esta versión no se pueden recuperar. Las iniciadas sin resultado incluyen abandonos y partidas en curso.
 
 El servicio se publica por separado y su código se mantiene fuera de este repositorio público; GitHub Pages solo publica el juego. Las claves administrativas y de rate limiting son secretas del servidor. Los resultados se validan y el guardado es idempotente, pero el gameplay calculado por el cliente aún permite manipular valores plausibles: no es antitrampa completo.
+
+## Historia en pareja
+
+Elegir **HISTORIA · 2P**, escribir el nombre de la pareja y empezar desde Praia centro. Tres capítulos conectan Praia centro, Piscinas naturales y Zona de embarque. La billetera comienza en R$100; completar las dos primeras etapas entrega R$30 por etapa. Se conservan dinero, puntos y tiempo total al avanzar; la energía se recupera al comenzar cada capítulo. Perder termina el viaje; reiniciar comienza otra historia desde la primera playa.
+
+El nombre se recuerda en este navegador y se guarda con la partida para el dashboard. Al terminar en victoria o derrota, se puede registrar voluntariamente si mejora el récord. La historia tiene ranking y estadísticas propios. Las etapas intermedias son checkpoints, no victorias finales. El servidor valida el orden de etapas y que el dinero no exceda la billetera anterior más la recompensa; repetir un checkpoint no agrega recompensas. No se guarda una partida en curso para retomarla tras recargar.
